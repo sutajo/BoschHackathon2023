@@ -80,16 +80,16 @@ public class Import : MonoBehaviour
             }
 
             firstObjectMovement.SetCurve("", typeof(Transform), "localPosition.x", firstObjectXAnimationCurve);
-            firstObjectMovement.SetCurve("", typeof(Transform), "localPosition.y", firstObjectYAnimationCurve);
+            firstObjectMovement.SetCurve("", typeof(Transform), "localPosition.z", firstObjectYAnimationCurve);
 
             secondObjectMovement.SetCurve("", typeof(Transform), "localPosition.x", secondObjectXAnimationCurve);
-            secondObjectMovement.SetCurve("", typeof(Transform), "localPosition.y", secondObjectYAnimationCurve);
+            secondObjectMovement.SetCurve("", typeof(Transform), "localPosition.z", secondObjectYAnimationCurve);
 
             thirdObjectMovement.SetCurve("", typeof(Transform), "localPosition.x", thirdObjectXAnimationCurve);
-            thirdObjectMovement.SetCurve("", typeof(Transform), "localPosition.y", thirdObjectYAnimationCurve);
+            thirdObjectMovement.SetCurve("", typeof(Transform), "localPosition.z", thirdObjectYAnimationCurve);
 
             fourthObjectMovement.SetCurve("", typeof(Transform), "localPosition.x", fourthObjectXAnimationCurve);
-            fourthObjectMovement.SetCurve("", typeof(Transform), "localPosition.y", fourthObjectYAnimationCurve);
+            fourthObjectMovement.SetCurve("", typeof(Transform), "localPosition.z", fourthObjectYAnimationCurve);
 
             Directory.CreateDirectory(animationDirectory);
 
