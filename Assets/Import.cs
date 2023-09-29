@@ -29,23 +29,36 @@ public class Import : MonoBehaviour
             var fourthObjectMovement = new AnimationClip();
             fourthObjectMovement.legacy = true;
 
-            var firstObjectXAnimationCurve = new AnimationCurve();
-            var firstObjectYAnimationCurve = new AnimationCurve();
+            var vehicleMovement = new AnimationClip();
+            vehicleMovement.legacy = true;
 
-            var secondObjectXAnimationCurve = new AnimationCurve();
-            var secondObjectYAnimationCurve = new AnimationCurve();
+            var firstObjectXAnimationKeyfames = new List<Keyframe>();
+            var firstObjectYAnimationKeyfames = new List<Keyframe>();
 
-            var thirdObjectXAnimationCurve = new AnimationCurve();
-            var thirdObjectYAnimationCurve = new AnimationCurve();
+            var secondObjectXAnimationKeyfames = new List<Keyframe>();
+            var secondObjectYAnimationKeyfames = new List<Keyframe>();
 
-            var fourthObjectXAnimationCurve = new AnimationCurve();
-            var fourthObjectYAnimationCurve = new AnimationCurve();
+            var thirdObjectXAnimationKeyfames = new List<Keyframe>();
+            var thirdObjectYAnimationKeyfames = new List<Keyframe>();
 
-            var ObjectAnimationCurve = new AnimationCurve();
+            var fourthObjectXAnimationKeyfames = new List<Keyframe>();
+            var fourthObjectYAnimationKeyfames = new List<Keyframe>();
+
+            var vehicleObjectXAnimationKeyfames = new List<Keyframe>();
+            var vehicleObjectYAnimationKeyfames = new List<Keyframe>();
+            var vehicleObjectZAnimationKeyfames = new List<Keyframe>();
+            var vehicleObjectYawAnimationKeyframes = new List<Keyframe>();
+
+            Vector3 vehiclePos = Vector3.zero;
+            vehiclePos.y = 0.74f;
+            float vehicleRotation = 0.0f;
+
+            float prevTime = 0.0f;
 
             using (var reader = new StreamReader(Path.Join(Application.dataPath, "Animation/ObjectDataset/DevelopmentData.csv")))
             {
                 reader.ReadLine();
+                int lineIndex = 0;
                 while (!reader.EndOfStream)
                 {
                     var line = reader.ReadLine();
@@ -63,21 +76,96 @@ public class Import : MonoBehaviour
                     var fourthDistanceX = float.Parse(values[7], CultureInfo.InvariantCulture);
                     var fourthDistanceY = float.Parse(values[8], CultureInfo.InvariantCulture);
 
-                    var time = float.Parse(values[19], CultureInfo.InvariantCulture);
+                    var vehicleSpeed = float.Parse(values[9], CultureInfo.InvariantCulture);
 
-                    firstObjectXAnimationCurve.AddKey(time, firstDistanceX / 128.0f);
-                    firstObjectYAnimationCurve.AddKey(time, firstDistanceY / 128.0f);
+                    var firstVelocityX = float.Parse(values[10], CultureInfo.InvariantCulture);
+                    var firstVelocityY = float.Parse(values[11], CultureInfo.InvariantCulture);
 
-                    secondObjectXAnimationCurve.AddKey(time, secondDistanceX / 128.0f);
-                    secondObjectYAnimationCurve.AddKey(time, secondDistanceY / 128.0f);
+                    var secondVelocityX = float.Parse(values[12], CultureInfo.InvariantCulture);
+                    var secondVelocityY = float.Parse(values[13], CultureInfo.InvariantCulture);
 
-                    thirdObjectXAnimationCurve.AddKey(time, thirdDistanceX / 128.0f);
-                    thirdObjectYAnimationCurve.AddKey(time, thirdDistanceY / 128.0f);
+                    var thirdVelocityX = float.Parse(values[14], CultureInfo.InvariantCulture);
+                    var thirdVelocityY = float.Parse(values[15], CultureInfo.InvariantCulture);
 
-                    fourthObjectXAnimationCurve.AddKey(time, fourthDistanceX / 128.0f);
-                    fourthObjectYAnimationCurve.AddKey(time, fourthDistanceY / 128.0f);
+                    var fourthVelocityX = float.Parse(values[16], CultureInfo.InvariantCulture);
+                    var fourthVelocityY = float.Parse(values[17], CultureInfo.InvariantCulture);
+
+                    var yawRate = float.Parse(values[18], CultureInfo.InvariantCulture);
+
+                    var time = float.Parse(values[19], CultureInfo.InvariantCulture) - 30;
+                    
+                    if(lineIndex != 0)
+                    {
+                        var dt = time - prevTime;
+                        vehicleRotation -= yawRate * dt;
+
+                        Vector3 forward = new Vector3(Mathf.Cos(-vehicleRotation), 0.0f, Mathf.Sin(-vehicleRotation));
+                        vehiclePos += forward * vehicleSpeed / 256.0f * dt;
+                    }
+
+                    Keyframe key = new Keyframe();
+                    key.time = time;
+
+                    key.value = firstDistanceX / 128.0f;
+                    //key.outTangent = firstVelocityX;
+                    firstObjectXAnimationKeyfames.Add(key);
+
+                    key.value = firstDistanceY / 128.0f;
+                    //key.outTangent = firstVelocityY;
+                    firstObjectYAnimationKeyfames.Add(key);
+
+                    key.value = secondDistanceX / 128.0f;
+                    //key.outTangent = secondVelocityX;
+                    secondObjectXAnimationKeyfames.Add(key);
+
+                    key.value = secondDistanceY / 128.0f;
+                    //key.outTangent = secondVelocityY;
+                    secondObjectYAnimationKeyfames.Add(key);
+
+                    key.value = thirdDistanceX / 128.0f;
+                    //key.outTangent = thirdVelocityX;
+                    thirdObjectXAnimationKeyfames.Add(key);
+
+                    key.value = thirdDistanceY / 128.0f;
+                    //key.outTangent = thirdVelocityY;
+                    thirdObjectYAnimationKeyfames.Add(key);
+
+                    key.value = fourthDistanceX / 128.0f;
+                    //key.outTangent = fourthVelocityX;
+                    fourthObjectXAnimationKeyfames.Add(key);
+
+                    key.value = fourthDistanceY / 128.0f;
+                    //key.outTangent = fourthVelocityY;
+                    fourthObjectYAnimationKeyfames.Add(key);
+
+                    key.value = vehiclePos.x;
+                    vehicleObjectXAnimationKeyfames.Add(key);
+
+                    key.value = vehiclePos.z;
+                    vehicleObjectYAnimationKeyfames.Add(key);
+
+                    key.value = vehiclePos.y;
+                    vehicleObjectZAnimationKeyfames.Add(key);
+
+                    key.value = Mathf.Rad2Deg * vehicleRotation;
+                    vehicleObjectYawAnimationKeyframes.Add(key);
+
+                    prevTime = time;
+                    ++lineIndex;
                 }
             }
+
+            var firstObjectXAnimationCurve = new AnimationCurve(firstObjectXAnimationKeyfames.ToArray());
+            var firstObjectYAnimationCurve = new AnimationCurve(firstObjectYAnimationKeyfames.ToArray());
+
+            var secondObjectXAnimationCurve = new AnimationCurve(secondObjectXAnimationKeyfames.ToArray());
+            var secondObjectYAnimationCurve = new AnimationCurve(secondObjectYAnimationKeyfames.ToArray());
+
+            var thirdObjectXAnimationCurve = new AnimationCurve(thirdObjectXAnimationKeyfames.ToArray());
+            var thirdObjectYAnimationCurve = new AnimationCurve(thirdObjectYAnimationKeyfames.ToArray());
+
+            var fourthObjectXAnimationCurve = new AnimationCurve(fourthObjectXAnimationKeyfames.ToArray());
+            var fourthObjectYAnimationCurve = new AnimationCurve(fourthObjectYAnimationKeyfames.ToArray());
 
             firstObjectMovement.SetCurve("", typeof(Transform), "localPosition.x", firstObjectXAnimationCurve);
             firstObjectMovement.SetCurve("", typeof(Transform), "localPosition.z", firstObjectYAnimationCurve);
@@ -91,12 +179,25 @@ public class Import : MonoBehaviour
             fourthObjectMovement.SetCurve("", typeof(Transform), "localPosition.x", fourthObjectXAnimationCurve);
             fourthObjectMovement.SetCurve("", typeof(Transform), "localPosition.z", fourthObjectYAnimationCurve);
 
+            var vehicleXCurve = new AnimationCurve(vehicleObjectXAnimationKeyfames.ToArray());
+            var vehicleYCurve = new AnimationCurve(vehicleObjectYAnimationKeyfames.ToArray());
+            var vehicleZCurve = new AnimationCurve(vehicleObjectZAnimationKeyfames.ToArray());
+            var vehicleRotationCurve = new AnimationCurve(vehicleObjectYawAnimationKeyframes.ToArray());
+            var vehilceAnimation = new AnimationClip();
+            vehilceAnimation.legacy = true;
+
+            vehilceAnimation.SetCurve("", typeof(Transform), "localPosition.x", vehicleXCurve);
+            vehilceAnimation.SetCurve("", typeof(Transform), "localPosition.y", vehicleZCurve);
+            vehilceAnimation.SetCurve("", typeof(Transform), "localPosition.z", vehicleYCurve);
+            vehilceAnimation.SetCurve("", typeof(Transform), "localEulerAngles.y", vehicleRotationCurve);
+
             Directory.CreateDirectory(animationDirectory);
 
             AssetDatabase.CreateAsset(firstObjectMovement, "Assets/Animation/Generated/Anim1.anim");
             AssetDatabase.CreateAsset(secondObjectMovement, "Assets/Animation/Generated/Anim2.anim");
             AssetDatabase.CreateAsset(thirdObjectMovement, "Assets/Animation/Generated/Anim3.anim");
             AssetDatabase.CreateAsset(fourthObjectMovement, "Assets/Animation/Generated/Anim4.anim");
+            AssetDatabase.CreateAsset(vehilceAnimation, "Assets/Animation/Generated/Vehicle.anim");
         }
     }
 }
