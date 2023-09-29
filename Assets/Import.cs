@@ -9,7 +9,7 @@ using System.Globalization;
 public class Import : MonoBehaviour
 {
     // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
         var _animation = GetComponent<Animation>();
 
@@ -49,9 +49,13 @@ public class Import : MonoBehaviour
             var vehicleObjectZAnimationKeyfames = new List<Keyframe>();
             var vehicleObjectYawAnimationKeyframes = new List<Keyframe>();
 
+            var vehicleWheelRotation = new List<Keyframe>();
+            var vehicleWheelTurn = new List<Keyframe>();
+
             Vector3 vehiclePos = Vector3.zero;
             vehiclePos.y = 0.74f;
             float vehicleRotation = 0.0f;
+            float wheelRotation = 0.0f;
 
             float prevTime = 0.0f;
 
@@ -93,18 +97,28 @@ public class Import : MonoBehaviour
                     var yawRate = float.Parse(values[18], CultureInfo.InvariantCulture);
 
                     var time = float.Parse(values[19], CultureInfo.InvariantCulture) - 30;
-                    
-                    if(lineIndex != 0)
+
+                    Keyframe key = new Keyframe();
+                    key.time = time;
+
+                    if (lineIndex != 0)
                     {
                         var dt = time - prevTime;
                         vehicleRotation -= yawRate * dt;
 
                         Vector3 forward = new Vector3(Mathf.Cos(-vehicleRotation), 0.0f, Mathf.Sin(-vehicleRotation));
                         vehiclePos += forward * vehicleSpeed / 256.0f * dt;
+
+
+                        key.value = -Mathf.Rad2Deg * yawRate;
+                        vehicleWheelTurn.Add(key);
+
+                        wheelRotation += vehicleSpeed / 256.0f * 1.2f * dt;
+
+                        key.value = Mathf.Rad2Deg * wheelRotation;
+                        vehicleWheelRotation.Add(key);
                     }
 
-                    Keyframe key = new Keyframe();
-                    key.time = time;
 
                     key.value = firstDistanceX / 128.0f;
                     //key.outTangent = firstVelocityX;
@@ -190,6 +204,17 @@ public class Import : MonoBehaviour
             vehilceAnimation.SetCurve("", typeof(Transform), "localPosition.y", vehicleZCurve);
             vehilceAnimation.SetCurve("", typeof(Transform), "localPosition.z", vehicleYCurve);
             vehilceAnimation.SetCurve("", typeof(Transform), "localEulerAngles.y", vehicleRotationCurve);
+
+            var rotations = vehicleWheelRotation.ToArray();
+            var wheelRotationCurve = new AnimationCurve(rotations);
+            var wheelTurnCurve = new AnimationCurve(vehicleWheelTurn.ToArray());
+
+            vehilceAnimation.SetCurve("BMW i8/wheelFrontLeft", typeof(Transform), "localEulerAngles.y", wheelTurnCurve);
+            vehilceAnimation.SetCurve("BMW i8/wheelFrontRight", typeof(Transform), "localEulerAngles.y", wheelTurnCurve);
+
+            vehilceAnimation.SetCurve("BMW i8/wheelFrontLeft", typeof(Transform), "localEulerAngles.x", wheelRotationCurve);
+            vehilceAnimation.SetCurve("BMW i8/wheelFrontRight", typeof(Transform), "localEulerAngles.x", wheelRotationCurve);
+            vehilceAnimation.SetCurve("BMW i8/wheelsBack", typeof(Transform), "localEulerAngles.x", wheelRotationCurve);
 
             Directory.CreateDirectory(animationDirectory);
 
