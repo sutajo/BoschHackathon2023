@@ -3,23 +3,31 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class ObjectFilterScript : MonoBehaviour
 {
-    GameObject _relevantGameObject;
     GameObject[] _gameObjects;
     
-    TrackedObject[] _trackedObjects;
-    
-    float[,] _scores;
+    List<TrackedObject> _trackedObjects;
+
+    float _lastCheckSeconds = 0.0f;
+
+    float DistanceToleranceBetweenKeys = 3.0f; // meter
+    float TrackedObjectLostTimeout = 10.0f; // seconds
+
+    Vector3 previousVehiclePos = Vector3.zero;
+    Vector3 previousTargetPos = Vector3.zero;
 
     class TrackedObject
     {
-        public Vector3 LastLocation;
-        public AnimationClip Animation;
-        public int ObjectIndex;
-        public float Score;
+        public Vector3 LastKnownLocation;
+        public float SecondsSinceLost;
+        public float SecondsSinceTracked;
+        public bool SeenNow;
+        public GameObject GameObject;
     }
 
     // Start is called before the first frame update
@@ -31,127 +39,132 @@ public class ObjectFilterScript : MonoBehaviour
         _gameObjects[2] = GameObject.Find("Character3");
         _gameObjects[3] = GameObject.Find("Character4");
 
-        _scores = new float[5,5];
-        _trackedObjects = new TrackedObject[4];
+        _trackedObjects = new List<TrackedObject>();
         for(int i=0; i<4; ++i)
         {
-            _trackedObjects[i] = new TrackedObject
+            _trackedObjects.Add(new TrackedObject
             {
-                Animation = _gameObjects[i].GetComponent<Animation>().clip,
-                LastLocation = _gameObjects[i].transform.position,
-                ObjectIndex = i,
-                Score = float.MaxValue
-            };
+                LastKnownLocation = _gameObjects[i].transform.position,
+                GameObject = _gameObjects[i],
+                SecondsSinceLost = 0.0f
+            });
         }
+    }
+
+    void HideGameObject(GameObject gameObject)
+    {
+        gameObject.transform.localScale = Vector3.zero;
+    }
+
+    void ShowGameObject(GameObject gameObject)
+    {
+        gameObject.transform.localScale = Vector3.one;
     }
 
     // Update is called once per frame
     void Update()
     {
-        for (int i = 0; i < 5; i++)
+        // If a tracked object's last known position is recent, and there is a gameobject that is in a similar place, assume that this object is tracked
+        // If a game object is not close to any of the tracked object's, assume it is new
+        // If a tracked object was seen a long time ago, delete it
+        // The relevant object is the one that is captured for the longest time
+
+        float seconds = Time.realtimeSinceStartup;
+        float delta = seconds - _lastCheckSeconds;
+
+        if (delta > 0.1)
         {
-            for (int j = 0; j < 5; j++)
+            // Assume that there is no gameobject currently corresponding to this tracked object
+            foreach (TrackedObject trackedObject in _trackedObjects)
             {
-                if(i == 4 || j == 4)
-                {
-                    _scores[i, j] = 10.0f; // Matching threshold
-                }
-                else if (_gameObjects[i].transform.localPosition.magnitude < 0.1)
-                {
-                    _scores[i,j] = float.MaxValue;
-                }
-                else
-                {
-                    _scores[i, j] = (_gameObjects[i].transform.position - _trackedObjects[j].LastLocation).magnitude;
-                }
-            }
-        }
-
-        // Bipartite graph matching
-        // https://www.youtube.com/watch?v=8uTXar8AWOw&t=1359s
-
-        for (int i = 0; i < 5; i++)
-        {
-            int minIndex = 0;
-            for (int j = 0; j < 5; j++)
-            {
-                if (_scores[i,j] < _scores[i, minIndex])
-                {
-                    minIndex = j;
-                }
+                trackedObject.SeenNow = false;
             }
 
-            for(int k=0; k<5; ++k)
+            for (int i=0; i<4; ++i)
             {
-                if(k != minIndex)
-                {
-                    _scores[i, k] = float.MaxValue;
-                }
-            }
+                bool gameObjectIsTracked = false;
 
-            for (int k = 0; k < 5; ++k)
-            {
-                if (k != i)
+                foreach(TrackedObject trackedObject in _trackedObjects)
                 {
-                    _scores[k, minIndex] = float.MaxValue;
-                }
-            }
-        }
-
-        for (int i = 0; i < 5; i++)
-        {
-            for (int j = 0; j < 5; j++)
-            {
-                if (_scores[i,j] != float.MaxValue)
-                {
-                    if(i < 4 && j < 4)
+                    if((trackedObject.LastKnownLocation - _gameObjects[i].transform.position).magnitude < DistanceToleranceBetweenKeys && _gameObjects[i].transform.localPosition.magnitude > 5.0)
                     {
-                        _trackedObjects[j].ObjectIndex = i;
-                        _trackedObjects[j].LastLocation = _gameObjects[i].transform.position;
-                        _trackedObjects[j].Score = _scores[i, j];
-                        _gameObjects[i].GetComponent<Animation>().clip = _trackedObjects[j].Animation;
-                    }
-                    else if(j < 4) // Object disappeared
-                    {
-                        _trackedObjects[j].ObjectIndex = -1;
-                        _trackedObjects[j].Score = float.MaxValue;
-                    }
-                }
-            }
-        }
-
-        for (int i = 0; i < 4; i++)
-        {
-            if (_scores[i, 4] != float.MaxValue)
-            {
-                for(int k=0; k<4; ++k)
-                {
-                    if (_trackedObjects[k].ObjectIndex == -1)
-                    {
-                        // New object appeared
-                        _trackedObjects[k].ObjectIndex = i;
-                        _trackedObjects[k].LastLocation = _gameObjects[i].transform.position;
-                        _trackedObjects[k].Animation = _gameObjects[i].GetComponent<Animation>().clip;
-                        _trackedObjects[k].Score = float.MaxValue;
+                        gameObjectIsTracked = true;
+                        trackedObject.SeenNow = true;
+                        trackedObject.SecondsSinceLost = 0.0f;
+                        trackedObject.SecondsSinceTracked += delta;
+                        trackedObject.LastKnownLocation = _gameObjects[i].transform.position;
+                        trackedObject.GameObject = _gameObjects[i];
                         break;
                     }
                 }
-            }
-        }
 
-        int MinIndex = 0;
-        for(int i=1; i<4; ++i)
-        {
-            if (_trackedObjects[i].Score < _trackedObjects[MinIndex].Score)
+                if(!gameObjectIsTracked && _gameObjects[i].transform.localPosition.magnitude > 5.0)
+                {
+                    // Add new tracked object
+                    gameObjectIsTracked = true;
+                    _trackedObjects.Add(new TrackedObject
+                    {
+                        LastKnownLocation = _gameObjects[i].transform.position,
+                        SeenNow = true,
+                        GameObject = _gameObjects[i],
+                        SecondsSinceLost = 0.0f,
+                        SecondsSinceTracked = 0.0f
+                    });
+                }
+            }
+
+
+            int longestTrackedIndex = -1;
+            for (int i=0; i<_trackedObjects.Count; ++i)
             {
-                MinIndex = i;
+                if (!_trackedObjects[i].SeenNow)
+                {
+                    _trackedObjects[i].SecondsSinceLost += delta;
+                }
+
+                if (_trackedObjects[i].GameObject.transform.localPosition.magnitude < 5.0) continue;
+
+                if(longestTrackedIndex == -1)
+                {
+                    longestTrackedIndex = i;
+                }
+                else if (_trackedObjects[longestTrackedIndex].SecondsSinceTracked < _trackedObjects[i].SecondsSinceTracked)
+                {
+                    longestTrackedIndex = i;
+                }
             }
+
+            bool found = false;
+            for (int i = 0; i < _trackedObjects.Count; ++i)
+            {
+                if (i == longestTrackedIndex && _trackedObjects[i].SeenNow)
+                {
+                    found = true;
+                    ShowGameObject(_trackedObjects[i].GameObject);
+                    var targetVelocity = (GameObject.Find("TargetVelocity").transform.position - previousTargetPos).magnitude / Time.deltaTime;
+                    GameObject.Find("TargetVelocity").GetComponent<TextMeshProUGUI>().text = String.Format("Target velocity: {0} m/s", targetVelocity);
+                    previousTargetPos = GameObject.Find("TargetVelocity").transform.position;
+                }
+                else
+                {
+                    HideGameObject(_trackedObjects[i].GameObject);
+                }
+            }
+
+            if(!found)
+            {
+                GameObject.Find("TargetVelocity").GetComponent<TextMeshProUGUI>().text = "Target unknown";
+            }
+            
+
+            _trackedObjects.RemoveAll(trackedObject => trackedObject.SecondsSinceLost > TrackedObjectLostTimeout);
+
+            _lastCheckSeconds = seconds;
         }
 
-        for (int i = 0; i < 4; ++i)
-        {
-             _gameObjects[i].transform.localScale = Vector3.zero;
-        }
-        _gameObjects[_trackedObjects[MinIndex].ObjectIndex].transform.localScale = Vector3.one;
+        var bmwVelocity = (GameObject.Find("BMWPos").transform.position - previousVehiclePos).magnitude / Time.deltaTime;
+        var bmwLabel = GameObject.Find("VehicleVelocity").GetComponent<TextMeshProUGUI>().text = String.Format("Vehicle velocity: {0} m/s", bmwVelocity);
+
+        previousVehiclePos = GameObject.Find("BMWPos").transform.position;
     }
 }
